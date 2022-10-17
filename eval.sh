@@ -1,28 +1,19 @@
 #!/usr/bin/env bash
 set -e
 
-model_root=/mnt/root/TaBERT/data/runs
-
 task=wtqqa
 pred=$1
 
-host=$(hostname)
-if [[ "$host" == "GPU02" ]]; then
-  prefix=$HOME
-else
-  prefix=""
-fi
-
 if [[ "$task" == "wtqqa" ]]; then
-  gold=${prefix}/mnt/root/TaBERT/data/wikitablequestions/test/preprocessed_with_ans.jsonl
+  gold=data/wikitablequestions/test/preprocessed_with_ans.jsonl
 elif [[ "$task" == "wtqqa_dev" ]]; then
   gold=data/wikitablequestions/WikiTableQuestions/data/random-split-1-dev.tsv  # case study purpose
 elif [[ "$task" == "wikisqlqa" ]]; then
-  gold=${prefix}/mnt/root/TaBERT/data/wikisql/tapex/test.src
+  gold=data/wikisql/tapex/test.src
 elif [[ "$task" == "totto_official" ]]; then
-  gold=$(pwd)/data/totto_data/totto_dev_data.jsonl
+  gold=data/totto_data/totto_dev_data.jsonl
 elif [[ "$task" == "totto" ]]; then
-  gold=$(pwd)/data/totto_data/dev/preprocessed_mention_cell.jsonl.raw
+  gold=data/totto_data/dev/preprocessed_mention_cell.jsonl.raw
 else
   exit
 fi
@@ -50,7 +41,7 @@ elif [[ -f $pred ]]; then
     # clean the prediction file
     eval_totto ${pred}
   else
-    python -m utils.eval \
+    echo python -m utils.eval \
       --prediction ${pred} \
       --gold ${gold} \
       --multi_ans_sep ", "

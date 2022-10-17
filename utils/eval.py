@@ -74,6 +74,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--prediction', type=str, required=True, nargs='+')
     parser.add_argument('--gold', type=str, default=None)
+    parser.add_argument('--tagged', type=str, default='data/WikiTableQuestions/tagged/data/pristine-unseen-tables.tagged')
     parser.add_argument('--multi_ans_sep', type=str, default=', ')
     parser.add_argument('--output', type=str, default=None)
     parser.add_argument('--data', type=str, default='wtq', choices=['wikisql', 'wtq', 'wikisql_sql', 'turl', 'totto'])
@@ -87,7 +88,7 @@ if __name__ == '__main__':
         from rouge import Rouge
         rouge = Rouge()
 
-    ind2tagged = load_tagged_file('/root/exp/WikiTableQuestions/tagged/data/pristine-unseen-tables.tagged')
+    ind2tagged = load_tagged_file(args.tagged)
     ind2tagged: Dict[int, List[List[str]]] = dict(zip(range(len(ind2tagged)), ind2tagged))
 
     cls_token, sep_token, pad_token = TableBertConfig.get_special_tokens(args.model_type)
@@ -177,7 +178,6 @@ if __name__ == '__main__':
                       golds = gold.split(sep)
                       preds: List[str] = pred.split(sep)
                     em = check_denotation(to_value_list(golds), to_value_list(preds))
-                    print(em, golds, preds)
                     aii = source_contains(source, golds)
                     ops = get_ops(source.lower())
                     for op in ops:
