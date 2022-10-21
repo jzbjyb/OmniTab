@@ -214,6 +214,7 @@ if __name__ == '__main__':
             anstype = 'number' if BasicDataset.is_number(gold.strip()) else 'text'
             answertype2ems[anstype].append(em)
 
+            '''
             if args.gold.endswith('.tsv'):
               wtqid = gfin.readline().strip().split()[0]
               fout.write(json.dumps({'id': wtqid, 'pred': pred, 'gold': gold, 'em': em}) + '\n')
@@ -241,6 +242,7 @@ if __name__ == '__main__':
                   numcell2ems[num_cell].append(em)
                   firstword2ems[first_word].append(em)
                   firstword2cases[first_word][int(em)].append((source, pred, gold))
+            '''
 
     if args.clean:
         exit(0)
