@@ -20,13 +20,22 @@ Dependencies are specified in `Dockerfile`.
 You can either build your own image using `docker build .`, or use [pre-built image](https://hub.docker.com/repository/docker/jzbjyb/my-repo) by running `docker pull jzbjyb/my-repo`.
 
 ## Pretrained models and data
-Download the best OmniTab model (OmniTab-large pretrained on natural and synthetic data and fine-tuned in full setting on WikiTableQuestions) and the WikiTableQuestions dataset from [Google Drive](https://drive.google.com/drive/u/1/folders/14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY). You can download it programmatically with [gdrive](https://anaconda.org/conda-forge/gdrive) using `gdrive download -r 14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY`.
+Download the best OmniTab model and the WikiTableQuestions dataset from [Google Drive](https://drive.google.com/drive/u/1/folders/14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY). You can download it programmatically with [gdrive](https://anaconda.org/conda-forge/gdrive) using `gdrive download -r 14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY`.
+It includes:
+```shell
+|-- omnitab # the best OmniTab model (pretrained on natural and synthetic data and fine-tuned in full setting on WikiTableQuestions) and its predictions
+    |-- model # model checkpoint
+    |-- wtq # predictions on the dev/test split of WikiTableQuestions
+|-- wtq # the WikiTableQuestions dataset
+    |-- train/dev/test # preprocessed data for fine-tuning and inference
+    |-- tagged_[dev|test].tsv # annotation files for evaluation
+```
 
 ## Experiment
 
 ### Pretraining
 Our best-performing model is based on `bart-large`, initialized with `tapex-large`, and trained with both natural data, synthetic data, and SQL data using the following command format:
-```bash
+```shell
 ./run_model.sh $ngpu $model_size $nat_data:$syn_data:$sql_data $model_dir $init_model $bs $acc $nepoch
 ```
 where `$ngpu` is the number of GPUs used in training, `$model_size` is `large`, `$nat_data:$syn_data:$sql_data` specifies the directory of each type of data, the pretrained model is saved at `$model_dir`, `$init_model` is `tapex-large`, `$bs` is the batch size per GPU, `$acc` is the number of gradient accumulation steps, and `$nepoch` is the number of epochs.
@@ -34,28 +43,27 @@ The effective batch size (i.e., number of examples used in each parameter update
 
 ### Finetuning
 To finetune the pretrained model on WikiTableQuestions dataset, run the following command:
-```bash
+```shell
 ./finetune_predict.sh default $model_size full 50 $model_dir
 ```
 which finetunes the pretrained model in `$model_dir` for 50 epochs using all examples (full setting).
 
 ### Inference
-Run inference using the bset OmniTab model on WikiTableQuestions test split:
-```bash
-./run_vanilla.sh 1 omnitab_download/wtq_preprocessed omnitab_download/omnitab seq2seq 6 1 omnitab_download/omnitab/pytorch_model.bin --base-model-name facebook/bart-large --only_test --mode generate-test --output_file output.tsv
+Run inference using the bset OmniTab model on WikiTableQuestions dev/test split:
+```shell
+./run_vanilla.sh 1 omnitab_download/wtq omnitab_download/omnitab/model seq2seq 6 1 omnitab_download/omnitab/model/pytorch_model.bin --base-model-name facebook/bart-large --only_test --mode generate-[dev|test] --output_file output.tsv
 ```
-which saves predictions in `omnitab_download/omnitab/output.tsv`.
+which saves predictions in `omnitab_download/omnitab/model/output.tsv`.
 
 ### Evaluation
-Evaluate accuracy on WikiTableQuestions test split:
-```bash
+We provided predictions from the best OmniTab model on WikiTableQuestions dev/test split in `omnitab_download/omnitab/wtq/[dev|test].tsv`.
+To compute accuracy:
+```shell
 python -m utils.eval \
-  --prediction omnitab_download/omnitab/output.tsv \
-  --gold omnitab_download/wtq_preprocessed/gold.jsonl \
-  --tagged omnitab_download/wtq_preprocessed/tagged.tsv \
+  --prediction omnitab_download/omnitab/wtq/[dev|test].tsv \
+  --tagged omnitab_download/wtq/tagged_[dev|test].tsv \
   --multi_ans_sep ", "
 ```
-We provided model predictions on WikiTableQuestions test split in `omnitab_download/omnitab/prediction.tsv`.
 
 ## Reference
 
