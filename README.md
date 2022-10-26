@@ -31,6 +31,31 @@ It includes:
     |-- tagged_[dev|test].tsv # annotation files for evaluation
 ```
 
+## Huggingface 🤗
+You can load the OmniTab model ([neulab/omnitab-large-finetuned-wtq](https://huggingface.co/neulab/omnitab-large-finetuned-wtq)) from HuggingFace's model hub.
+```python
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import pandas as pd
+
+tokenizer = AutoTokenizer.from_pretrained('neulab/omnitab-large-finetuned-wtq')
+model = AutoModelForSeq2SeqLM.from_pretrained('neulab/omnitab-large-finetuned-wtq')
+
+data = {
+    'year': [1896, 1900, 1904, 2004, 2008, 2012],
+    'city': ['athens', 'paris', 'st. louis', 'athens', 'beijing', 'london']
+}
+table = pd.DataFrame.from_dict(data)
+
+query = 'In which year did beijing host the Olympic Games?'
+encoding = tokenizer(table=table, query=query, return_tensors='pt')
+
+outputs = model.generate(**encoding)
+
+print(tokenizer.batch_decode(outputs, skip_special_tokens=True))
+# [' 2008']
+
+```
+
 ## Experiment
 
 ### Pretraining
