@@ -23,7 +23,10 @@ You can either build your own image using `docker build .`, or use [pre-built im
 Download the best OmniTab model and the WikiTableQuestions dataset from [Google Drive](https://drive.google.com/drive/u/1/folders/14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY). You can download it programmatically with [gdrive](https://anaconda.org/conda-forge/gdrive) using `gdrive download -r 14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY`.
 It includes:
 ```shell
-|-- omnitab # the best OmniTab model (pretrained on natural and synthetic data and fine-tuned in full setting on WikiTableQuestions) and its predictions
+|-- omnitab-large # the best OmniTab model (pretrained on natural and synthetic data)
+    |-- model # model checkpoint
+    |-- wtq # predictions on the dev/test split of WikiTableQuestions
+|-- omnitab-large-finetuned-wtq # the best OmniTab model fine-tuned on all examples from WikiTableQuestions
     |-- model # model checkpoint
     |-- wtq # predictions on the dev/test split of WikiTableQuestions
 |-- wtq # the WikiTableQuestions dataset
@@ -32,7 +35,7 @@ It includes:
 ```
 
 ## Huggingface 🤗
-You can load the OmniTab model ([neulab/omnitab-large-finetuned-wtq](https://huggingface.co/neulab/omnitab-large-finetuned-wtq)) from HuggingFace's model hub.
+You can directly load the OmniTab model (`neulab/omnitab-large-finetuned-wtq`) from HuggingFace's model hub.
 ```python
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import pandas as pd
@@ -53,8 +56,11 @@ outputs = model.generate(**encoding)
 
 print(tokenizer.batch_decode(outputs, skip_special_tokens=True))
 # [' 2008']
-
 ```
+
+Model list
+- [neulab/omnitab-large](https://huggingface.co/neulab/omnitab-large)
+- [neulab/omnitab-large-finetuned-wtq](https://huggingface.co/neulab/omnitab-large-finetuned-wtq)
 
 ## Experiment
 
