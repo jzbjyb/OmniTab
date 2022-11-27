@@ -12,9 +12,11 @@
 #SBATCH --mem=256GB
 #SBATCH --job-name=wtq
 
-deepspeed run_wikitablequestions.py \
+model=neulab/omnitab-large-finetuned-wtq
+
+python run_wikitablequestions.py \
   --do_predict \
-  --model_name_or_path neulab/omnitab-large-finetuned-wtq \
+  --model_name_or_path ${model} \
   --output_dir test \
   --per_device_eval_batch_size 6 \
   --predict_with_generate \

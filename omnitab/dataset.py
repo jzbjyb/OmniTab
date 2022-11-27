@@ -893,8 +893,11 @@ class Example(object):
                 cbm = [[(m, []) for m in single_cbm] for single_cbm in cbm]
             assert len(cbm) == len(context_before_offsets)
             # TODO: modify files to avoid this postprocess
-            cbm = [Example.char_index2token_index(off, Example.mention_postprocess(cm), added_prefix_space=aps)
-                   for off, cm in zip(context_before_offsets, cbm)]
+            if tokenizer is not None or tokenizer_fast is not None:
+                cbm = [Example.char_index2token_index(off, Example.mention_postprocess(cm), added_prefix_space=aps)
+                    for off, cm in zip(context_before_offsets, cbm)]
+            else:
+                cbm = [Example.mention_postprocess(cm) for cm in cbm]
         # TODO: add after
 
         uuid = entry['uuid']
@@ -1098,6 +1101,27 @@ class TableDatabase:
             db.__example_store = example_store
 
         return db
+    
+    def to_jsonl(self, file_path):
+        with open(file_path, 'w') as fout:
+            for example in tqdm(self):
+                context = example.context[0][0]
+                assert type(context) is str and len(context), f'#{context}#'
+                mentions = [m[0] for m in example.context_mentions[0][0]]
+                assert len(mentions)
+                answers = []
+                table = {
+                    'header': [h.name for h in example.header],
+                    'rows': [[example.column_data[c][r] for c in range(len(example.column_data))] for r in range(len(example.column_data[0]))],
+                }
+                for h in table['header']:
+                    assert type(h) is str, f'#{h}#{type(h)}'
+                assert len(table['rows'])
+                for row in table['rows']:
+                    assert len(row) == len(table['header'])
+                    for cell in row:
+                        assert type(cell) is str, f'#{cell}#{type(cell)}'
+                fout.write(json.dumps({'context': context, 'mentions': mentions, 'table': table, 'answers': answers}) + '\n')
 
     def load_data_to_redis(self, file_path: Path):
         reader = multiprocessing.Process(target=self.__load_process_zmq, args=(file_path, self.num_workers),
