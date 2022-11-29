@@ -12,29 +12,14 @@ We propose an **omnivorous** pretraining approach that consumes **natural** data
 
 ## Installation
 
-### Conda
+### Conda (recommended)
 Create a conda env with the name `omnitab` using `./setup.sh`.
 
 ### Docker
 Dependencies are specified in `Dockerfile`.
 You can either build your own image using `docker build .`, or use [pre-built image](https://hub.docker.com/repository/docker/jzbjyb/my-repo) by running `docker pull jzbjyb/my-repo`.
 
-## Pretrained models and data
-Download the best OmniTab model and the WikiTableQuestions dataset from [Google Drive](https://drive.google.com/drive/u/1/folders/14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY). You can download it programmatically with [gdrive](https://anaconda.org/conda-forge/gdrive) using `gdrive download -r 14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY`.
-It includes:
-```shell
-|-- omnitab-large # the best OmniTab model (pretrained on natural and synthetic data)
-    |-- model # model checkpoint
-    |-- wtq # predictions on the dev/test split of WikiTableQuestions
-|-- omnitab-large-finetuned-wtq # the best OmniTab model fine-tuned on all examples from WikiTableQuestions
-    |-- model # model checkpoint
-    |-- wtq # predictions on the dev/test split of WikiTableQuestions
-|-- wtq # the WikiTableQuestions dataset
-    |-- train/dev/test # preprocessed data for fine-tuning and inference
-    |-- tagged_[dev|test].tsv # annotation files for evaluation
-```
-
-## Huggingface 🤗
+## Finetuning or run inference using Huggingface Transformers 🤗
 You can directly load the OmniTab model (`neulab/omnitab-large-finetuned-wtq`) from HuggingFace's model hub.
 ```python
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
@@ -58,9 +43,44 @@ print(tokenizer.batch_decode(outputs, skip_special_tokens=True))
 # [' 2008']
 ```
 
-Model list
-- [neulab/omnitab-large](https://huggingface.co/neulab/omnitab-large)
-- [neulab/omnitab-large-finetuned-wtq](https://huggingface.co/neulab/omnitab-large-finetuned-wtq)
+### Model list
+
+- Pretrained models
+  - [neulab/omnitab-large](https://huggingface.co/neulab/omnitab-large): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the full setting.
+  - [neulab/omnitab-large-16shot](https://huggingface.co/neulab/omnitab-large-16shot): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the 16-shot setting.
+  - [neulab/omnitab-large-16shot](https://huggingface.co/neulab/omnitab-large-128shot): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the 128-shot setting.
+  - [neulab/omnitab-large-16shot](https://huggingface.co/neulab/omnitab-large-1024shot): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the 1024-shot setting.
+- Finetuned models
+  - [neulab/omnitab-large-finetuned-wtq](https://huggingface.co/neulab/omnitab-large-finetuned-wtq): `neulab/omnitab-large` finetuned on WTQ in the full setting.
+  - [neulab/omnitab-large-16shot-finetuned-wtq-16shot](https://huggingface.co/neulab/omnitab-large-16shot-finetuned-wtq-16shot): `neulab/omnitab-large-16shot` finetuned on WTQ in the 16-shot setting.
+  - [neulab/omnitab-large-128shot-finetuned-wtq-128shot](https://huggingface.co/neulab/omnitab-large-128shot-finetuned-wtq-128shot): `neulab/omnitab-large-128shot` finetuned on WTQ in the 128-shot setting.
+  - [neulab/omnitab-large-1024shot-finetuned-wtq-1024shot](https://huggingface.co/neulab/omnitab-large-1024shot-finetuned-wtq-1024shot): `neulab/omnitab-large-1024shot` finetuned on WTQ in the 1024-shot setting.
+
+### Peformance
+The table below contains the peformance of OmniTab models of various settings on validation/test split of WTQ before (`omnitab-large-{f}shot`) and after finetuning (`...-finetuned-wtq-{f}shot`).
+
+| **Split**  |      **Validation**     |        **Validation**       |         **Test**        |           **Test**          |
+|------------|:-----------------------:|:---------------------------:|:-----------------------:|:---------------------------:|
+| **Model**  | `omnitab-large-{f}shot` | `...-finetuned-wtq-{f}shot` | `omnitab-large-{f}shot` | `...-finetuned-wtq-{f}shot` |
+| **f=16**   |                   0.249 |                       0.220 |                   0.235 |                       0.233 |
+| **f=128**  |                   0.299 |                       0.415 |                   0.294 |                       0.412 |
+| **f=1024** |                   0.349 |                       0.534 |                   0.346 |                       0.526 |
+| **full**   |                   0.411 |                       0.625 |                   0.417 |                       0.633 |
+
+## Pretrained models and data
+Download the best OmniTab model and the WikiTableQuestions dataset from [Google Drive](https://drive.google.com/drive/u/1/folders/14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY). You can download it programmatically with [gdrive](https://anaconda.org/conda-forge/gdrive) using `gdrive download -r 14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY`.
+It includes:
+```shell
+|-- omnitab-large # the best OmniTab model (pretrained on natural and synthetic data)
+    |-- model # model checkpoint
+    |-- wtq # predictions on the dev/test split of WikiTableQuestions
+|-- omnitab-large-finetuned-wtq # the best OmniTab model fine-tuned on all examples from WikiTableQuestions
+    |-- model # model checkpoint
+    |-- wtq # predictions on the dev/test split of WikiTableQuestions
+|-- wtq # the WikiTableQuestions dataset
+    |-- train/dev/test # preprocessed data for fine-tuning and inference
+    |-- tagged_[dev|test].tsv # annotation files for evaluation
+```
 
 ## Experiment
 

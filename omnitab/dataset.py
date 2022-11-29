@@ -1108,8 +1108,7 @@ class TableDatabase:
                 context = example.context[0][0]
                 assert type(context) is str and len(context), f'#{context}#'
                 mentions = [m[0] for m in example.context_mentions[0][0]]
-                assert len(mentions)
-                answers = []
+                answers = example.answers
                 table = {
                     'header': [h.name for h in example.header],
                     'rows': [[example.column_data[c][r] for c in range(len(example.column_data))] for r in range(len(example.column_data[0]))],
