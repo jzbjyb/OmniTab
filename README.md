@@ -50,7 +50,7 @@ print(tokenizer.batch_decode(outputs, skip_special_tokens=True))
   - [neulab/omnitab-large-128shot-finetuned-wtq-128shot](https://huggingface.co/neulab/omnitab-large-128shot-finetuned-wtq-128shot): `neulab/omnitab-large-128shot` finetuned on WTQ in the 128-shot setting.
   - [neulab/omnitab-large-1024shot-finetuned-wtq-1024shot](https://huggingface.co/neulab/omnitab-large-1024shot-finetuned-wtq-1024shot): `neulab/omnitab-large-1024shot` finetuned on WTQ in the 1024-shot setting.
 
-### Peformance reference
+### Performance reference
 The table below contains the peformance of OmniTab models of various settings on validation/test split of WTQ before (`omnitab-large-{f}shot`) and after finetuning (`...-finetuned-wtq-{f}shot`).
 
 | **Split**  |      **Validation**     |        **Validation**       |         **Test**        |           **Test**          |
@@ -75,6 +75,30 @@ It includes:
     |-- predictions_test # predictions of various OmniTab models on the WTQ test split
     |-- tagged # annotation files used in computing metrics
     |-- validation_ids.txt # ids of validation examples used in computing metrics
+```
+
+### Pretraining data format
+Each example contains 4 fields `context`, `table`, `mentions`, and `answers`, where
+- `context` is the natural language sentence relevant to the `table`.
+- `table` is a 2-dimensional table with a `header` and one or multiple `rows`.
+- `mentions` is a list of char-indexed spans that indicate mentions in the `context` aligned with the `table`.
+- `answers` is a list of answers.
+
+`context`, `table`, and `mentions` are required for natural pretraining examples, while `context`, `table`, and `answers` are required for synthetic pretraining examples.
+Take a look at [the pretraining data processing code](https://github.com/jzbjyb/OmniTab/blob/main/data_processor.py#L353-L362) to get a better idea. 
+Below is a natural pretraining example:
+```shell
+{
+  "context": " actresses (catalan: actrius) is a 1997 catalan language spanish drama film ...", 
+  "mentions": [[40, 47], [101, 113], [164, 181]], 
+  "table": {
+    "header": ["Directed by", "Produced by", "Written by", ...], 
+    "rows": [
+      ["Ventura Pons", "Ventura Pons", "Josep Maria Benet i Jornet", ...]
+    ]
+  },
+  "answers": []
+}
 ```
 
 ## Experiments
