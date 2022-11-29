@@ -131,4 +131,6 @@ Hyperparameters are the same as the ones used in the paper.
 }
 ```
 
-The codebase is based by [TAPEX](https://github.com/microsoft/Table-Pretraining) and [its Huggingface version](https://github.com/huggingface/transformers/tree/main/examples/research_projects/tapex), so take a look their repositories if you want to explore more details.
+## Acknowledgement
+The codebase is inspired by and based on [TAPEX](https://github.com/microsoft/Table-Pretraining) and [its Huggingface version](https://github.com/huggingface/transformers/tree/main/examples/research_projects/tapex), which is well-organized and easy to use.
+Take a look their repositories if you want to explore more details!
