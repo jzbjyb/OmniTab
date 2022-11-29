@@ -1,10 +1,10 @@
 # OmniTab: Omnivorous Pretraining for Table-based QA
 
-This repository contains the code, pre-trained models, and data for our paper [OmniTab: Pretraining with Natural and Synthetic Data for Few-shot Table-based Question Answering](https://arxiv.org/pdf/2207.03637.pdf).
+This repository contains the code, pre-trained models, and data for our paper [OmniTab: Pretraining with Natural and Synthetic Data for Few-shot Table-based Question Answering](https://arxiv.org/pdf/2207.03637.pdf) by Zhengbao Jiang, Yi Mao, Pengcheng He, Graham Neubig, Weizhu Chen.
 
 ## Overview
 
-We propose an **omnivorous** pretraining approach that consumes **natural** data to endow models with the ability to understand and align NL with tables, and **synthetic** questions to train models to perform reasoning.
+We propose an **omnivorous** pretraining approach that consumes **natural** data to endow models with the ability to understand and align natural language with tables, and **synthetic** questions to train models to perform reasoning.
 
 <p align="center">
   <img align="middle" src="res/omnitab.png" height="350" alt="OmniTab"/>
@@ -19,7 +19,7 @@ Create a conda env with the name `omnitab` using `./setup.sh`.
 Dependencies are specified in `Dockerfile`.
 You can either build your own image using `docker build .`, or use [pre-built image](https://hub.docker.com/repository/docker/jzbjyb/my-repo) by running `docker pull jzbjyb/my-repo`.
 
-## Finetuning or run inference using Huggingface Transformers 🤗
+## Quick start using Huggingface Transformers 🤗
 You can directly load the OmniTab model (`neulab/omnitab-large-finetuned-wtq`) from HuggingFace's model hub.
 ```python
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
@@ -45,7 +45,7 @@ print(tokenizer.batch_decode(outputs, skip_special_tokens=True))
 
 ### Model list
 
-- Pretrained models
+- Pretrained models (w/o finetuning)
   - [neulab/omnitab-large](https://huggingface.co/neulab/omnitab-large): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the full setting.
   - [neulab/omnitab-large-16shot](https://huggingface.co/neulab/omnitab-large-16shot): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the 16-shot setting.
   - [neulab/omnitab-large-16shot](https://huggingface.co/neulab/omnitab-large-128shot): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the 128-shot setting.
@@ -56,7 +56,7 @@ print(tokenizer.batch_decode(outputs, skip_special_tokens=True))
   - [neulab/omnitab-large-128shot-finetuned-wtq-128shot](https://huggingface.co/neulab/omnitab-large-128shot-finetuned-wtq-128shot): `neulab/omnitab-large-128shot` finetuned on WTQ in the 128-shot setting.
   - [neulab/omnitab-large-1024shot-finetuned-wtq-1024shot](https://huggingface.co/neulab/omnitab-large-1024shot-finetuned-wtq-1024shot): `neulab/omnitab-large-1024shot` finetuned on WTQ in the 1024-shot setting.
 
-### Peformance
+### Peformance reference
 The table below contains the peformance of OmniTab models of various settings on validation/test split of WTQ before (`omnitab-large-{f}shot`) and after finetuning (`...-finetuned-wtq-{f}shot`).
 
 | **Split**  |      **Validation**     |        **Validation**       |         **Test**        |           **Test**          |
@@ -65,7 +65,7 @@ The table below contains the peformance of OmniTab models of various settings on
 | **f=16**   |                   0.249 |                       0.220 |                   0.235 |                       0.233 |
 | **f=128**  |                   0.299 |                       0.415 |                   0.294 |                       0.412 |
 | **f=1024** |                   0.349 |                       0.534 |                   0.346 |                       0.526 |
-| **full**   |                   0.411 |                       0.625 |                   0.417 |                       0.633 |
+| **Full**   |                   0.411 |                       0.625 |                   0.417 |                       0.633 |
 
 ## Pretraining data and WikiTableQuestions dataset
 Download the pretraining data and the WikiTableQuestions dataset from [Google Drive](https://drive.google.com/drive/u/1/folders/14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY). You can download it programmatically with [gdrive](https://anaconda.org/conda-forge/gdrive) using `gdrive download -r 14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY`.
@@ -73,7 +73,7 @@ It includes:
 ```shell
 |-- pretrain_data
     |-- natural.jsonl # natural pretraining data (generated from a subset of the TAPAS pretraining data (https://github.com/google-research/tapas/blob/master/PRETRAIN_DATA.md))
-    |-- synthetic.jsonl # synthetic pretraining data (generated from sql.jsonl)
+    |-- synthetic.jsonl # synthetic pretraining data (generated from sql.jsonl using SQL2NL model training in the full setting)
     |-- sql.jsonl # SQL pretraining data (a subset of the TAPEX pretraining data (https://github.com/microsoft/Table-Pretraining#pre-training-corpus))
 |-- wtq # the WikiTableQuestions dataset
     |-- fewshot_ids # ids of training examples used in few-shot finetuning
@@ -84,38 +84,46 @@ It includes:
 ```
 
 ## Experiment
-
-### Pretraining
-Our best-performing model is based on `bart-large`, initialized with `tapex-large`, and trained with both natural data, synthetic data, and SQL data using the following command format:
-```shell
-./run_model.sh $ngpu $model_size $nat_data:$syn_data:$sql_data $model_dir $init_model $bs $acc $nepoch
-```
-where `$ngpu` is the number of GPUs used in training, `$model_size` is `large`, `$nat_data:$syn_data:$sql_data` specifies the directory of each type of data, the pretrained model is saved at `$model_dir`, `$init_model` is `tapex-large`, `$bs` is the batch size per GPU, `$acc` is the number of gradient accumulation steps, and `$nepoch` is the number of epochs.
-The effective batch size (i.e., number of examples used in each parameter update) is `$ngpu $bs $acc`.
+The scripts below by defaults use 8 GPUs and assume they are 32GB V100.
+An example SLURM header is included at the top of each script if you want to submit the script using `sbatch`.
+Modify these headers and the commands to activate the environemnt based on the configuration of your cluster.
 
 ### Finetuning
-To finetune the pretrained model on WikiTableQuestions dataset, run the following command:
+
+#### Full
+Finetune pretrained OmniTab models on WikiTableQuestions dataset in the full setting:
 ```shell
-./finetune_predict.sh default $model_size full 50 $model_dir
+./train_wikitablequestions.sh neulab/omnitab-large output/omnitab-large-finetuned-wtq
 ```
-which finetunes the pretrained model in `$model_dir` for 50 epochs using all examples (full setting).
+which finetunes `neulab/omnitab-large` and saves the model to `output/omnitab-large-finetuned-wtq`.
+All hyperparameters are set to reproduce the experiments in the paper, and you should be able to get performance close to 0.633 as listed in the "performance reference" table
+
+#### Few-shot
+Finetune pretrained OmniTab models on WikiTableQuestions dataset in few-shot settings:
+```shell
+./train_wikitablequestions.sh neulab/omnitab-large-${f}shot output/omnitab-large-${f}shot-finetuned-wtq-${f}shot ${f}
+```
+which takes the pretrained model `neulab/omnitab-large-${f}shot` and finetunes it in f-shot setting where `f=[16|32|64|128|256|512|1024]`.
 
 ### Inference
-Run inference using the bset OmniTab model on WikiTableQuestions dev/test split:
+Run inference using OmniTab models on WikiTableQuestions validation or test split and save the prediction results to `outupt/predictions.txt`:
 ```shell
-./run_vanilla.sh 1 omnitab_download/wtq omnitab_download/omnitab/model seq2seq 6 1 omnitab_download/omnitab/model/pytorch_model.bin --base-model-name facebook/bart-large --only_test --mode generate-[dev|test] --output_file output.tsv
+./test_wikitablequestions.sh validation|test neulab/omnitab-large-finetuned-wtq output
 ```
-which saves predictions in `omnitab_download/omnitab/model/output.tsv`.
 
 ### Evaluation
-We provided predictions from the best OmniTab model on WikiTableQuestions dev/test split in `omnitab_download/omnitab/wtq/[dev|test].tsv`.
-To compute accuracy:
+We use answer accuracy (i.e., denotation accuracy) as the metric and the numbers produced by `run.py` is less lenient to small variances (such as different formats of dates). To get a more accurate metric (usually higher), we use [the official WTQ evaluation script](https://github.com/ppasupat/WikiTableQuestions/blob/master/evaluator.py) and [modifies it slightly](https://github.com/jzbjyb/OmniTab/blob/main/evaluator.py#L387-L390) to handle predictions from generative models which are a single string potentially containing multiple answers concatenated by a separator.
 ```shell
-python -m utils.eval \
-  --prediction omnitab_download/omnitab/wtq/[dev|test].tsv \
-  --tagged omnitab_download/wtq/tagged_[dev|test].tsv \
-  --multi_ans_sep ", "
+python evaluator.py --split test omnitab_download/wtq/predictions_test/omnitab-large-finetuned-wtq.txt
+python evaluator.py --split validation omnitab_download/wtq/predictions_validation/omnitab-large-finetuned-wtq.txt
 ```
+
+### Pretraining
+The best OmniTab model is initialized with `microsoft/tapex-large`, and continuously pretrained on both natural data, synthetic data, and SQL data in `omnitab_download/pretrain_data`:
+```shell
+./pretrain.sh omnitab_download/pretrain_data microsoft/tapex-large output/omnitab-large
+```
+Hyperparameters are the same as the ones used in the paper.
 
 ## Reference
 
@@ -129,4 +137,4 @@ python -m utils.eval \
 }
 ```
 
-Our codebase is based on [TaBERT](https://github.com/facebookresearch/TaBERT) and [TAPEX](https://github.com/microsoft/Table-Pretraining), so take a look their repositories if you want to explore more details.
+The codebase is based by [TAPEX](https://github.com/microsoft/Table-Pretraining) and [its Huggingface version](https://github.com/huggingface/transformers/tree/main/examples/research_projects/tapex), so take a look their repositories if you want to explore more details.
