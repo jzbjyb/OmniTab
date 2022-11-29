@@ -10,10 +10,10 @@ We propose an **omnivorous** pretraining approach that consumes **natural** data
   <img align="middle" src="res/omnitab.png" height="350" alt="OmniTab"/>
 </p>
 
-## Installation with Conda
+## Install environment with Conda
 Create a conda env with the name `omnitab` using `./setup.sh`.
 
-## Quick start using Huggingface Transformers 🤗
+## Quick start using Transformers 🤗
 You can directly load the OmniTab model (`neulab/omnitab-large-finetuned-wtq`) from HuggingFace's model hub.
 ```python
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
@@ -61,7 +61,7 @@ The table below contains the peformance of OmniTab models of various settings on
 | **f=1024** |                   0.349 |                       0.534 |                   0.346 |                       0.526 |
 | **Full**   |                   0.411 |                       0.625 |                   0.417 |                       0.633 |
 
-## Pretraining data and WikiTableQuestions dataset
+## Download pretraining data and WikiTableQuestions dataset
 Download the pretraining data and the WikiTableQuestions dataset from [Google Drive](https://drive.google.com/drive/u/1/folders/14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY). You can download it programmatically with [gdrive](https://anaconda.org/conda-forge/gdrive) using `gdrive download -r 14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY`.
 It includes:
 ```shell
@@ -77,7 +77,7 @@ It includes:
     |-- validation_ids.txt # ids of validation examples used in computing metrics
 ```
 
-## Experiment
+## Experiments
 The scripts below by defaults use 8 GPUs and assume they are 32GB V100.
 An example SLURM header is included at the top of each script if you want to submit the script using `sbatch`.
 Modify these headers and the commands to activate the environemnt based on the configuration of your cluster.
