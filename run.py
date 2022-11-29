@@ -15,8 +15,8 @@
 # limitations under the License.
 
 """
-Fine-tuning the library models for tapex on table-based question answering tasks.
-Adapted from script: https://github.com/huggingface/transformers/blob/master/examples/pytorch/summarization/run_summarization.py
+Fine-tuning on table-based question answering tasks or pretraining on OmniTab data
+Adapted from script: https://github.com/huggingface/transformers/blob/main/examples/research_projects/tapex/run_wikitablequestions_with_tapex.py
 """
 
 import logging
@@ -37,7 +37,6 @@ from filelock import FileLock
 from transformers import (
     AutoConfig,
     BartForConditionalGeneration,
-    DataCollatorForSeq2Seq,
     HfArgumentParser,
     Seq2SeqTrainer,
     Seq2SeqTrainingArguments,
@@ -47,10 +46,11 @@ from transformers import (
 from transformers.file_utils import is_offline_mode
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
 from transformers.utils import check_min_version
+from data_processor import OmnitabPretrainDataset, PretrainProcessor, TableQAProcessor, DataCollatorWithTargetToBeShifted
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
-check_min_version("4.17.0.dev0")
+check_min_version("4.24.0")
 
 logger = logging.getLogger(__name__)
 
@@ -115,11 +115,17 @@ class DataTrainingArguments:
     Arguments pertaining to what data we are going to input our model for training and eval.
     """
 
+    pretraindata_dir: Optional[str] = field(
+        default=None, metadata={"help": "The directory of OmniTab pretraining data containing natural.jsonl, synthetic.jsonl, and sql.jsonl."}
+    )
     dataset_name: Optional[str] = field(
         default="wikitablequestions", metadata={"help": "The name of the dataset to use (via the datasets library)."}
     )
     dataset_config_name: Optional[str] = field(
         default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
+    )
+    train_ids_file: Optional[str] = field(
+        default=None, metadata={"help": "The file containing ids of training examples which is used to filter the training dataset."}
     )
     train_file: Optional[str] = field(
         default=None, metadata={"help": "The input training data file (a jsonlines or csv file)."}
@@ -136,6 +142,12 @@ class DataTrainingArguments:
         default=None,
         metadata={
             "help": "An optional input test data file to evaluate the metrics (rouge) on (a jsonlines or csv file)."
+        },
+    )
+    do_predict_on: Optional[str] = field(
+        default="test",
+        metadata={
+            "help": "On which split to run prediction."
         },
     )
     overwrite_cache: bool = field(
@@ -314,6 +326,25 @@ def main():
             extension = data_args.test_file.split(".")[-1]
         datasets = load_dataset(extension, data_files=data_files, cache_dir=model_args.cache_dir)
 
+    train_dataset = datasets['train'] if 'train' in datasets else None
+    eval_dataset = datasets['validation'] if 'validation' in datasets else None
+    if data_args.do_predict_on == 'test':
+        predict_dataset = datasets['test'] if 'test' in datasets else None
+    elif data_args.do_predict_on == 'validation':
+        predict_dataset = datasets['validation'] if 'validation' in datasets else None
+    else:
+        raise NotImplementedError
+
+    if data_args.train_ids_file:  # filter training dataset by ids for few-shot settings
+        ids = set(map(lambda x: x.strip(), open(data_args.train_ids_file, 'r')))
+        train_dataset = train_dataset.filter(lambda example: example['id'] in ids)
+        assert len(train_dataset) == len(ids), 'some ids do not exist in the training data'
+        logger.info(f'Filter training data down to {len(train_dataset)} examples')
+
+    if data_args.pretraindata_dir:  # use pretrain dataset as training dataset
+        pretrain_dataset = OmnitabPretrainDataset(data_args.pretraindata_dir)
+        train_dataset = pretrain_dataset
+
     # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
 
@@ -332,13 +363,13 @@ def main():
 
     # IMPORTANT: the initial BART model's decoding is penalized by no_repeat_ngram_size, and thus
     # we should disable it here to avoid problematic generation
-    # comment this line for the OmniTab model because the no_repeat_ngram_size is essential to 
+    # comment this line for the OmniTab model because the no_repeat_ngram_size is essential to
     # avoid the issue of repeating <s>
     # config.no_repeat_ngram_size = 0
     config.max_length = 1024
     config.early_stopping = False
 
-    # load tapex tokenizer
+    # load tokenizer that always add a prefix space
     tokenizer = TapexTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
@@ -348,7 +379,7 @@ def main():
         add_prefix_space=True,
     )
 
-    # load Bart based Tapex model (default tapex-large)
+    # load Bart-based model
     model = BartForConditionalGeneration.from_pretrained(
         model_args.model_name_or_path,
         from_tf=bool(".ckpt" in model_args.model_name_or_path),
@@ -361,138 +392,81 @@ def main():
     if model.config.decoder_start_token_id is None:
         raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
 
-    # Preprocessing the datasets.
-    # We need to tokenize inputs and targets.
-    if training_args.do_train:
-        column_names = datasets["train"].column_names
-    elif training_args.do_eval:
-        column_names = datasets["validation"].column_names
-    elif training_args.do_predict:
-        column_names = datasets["test"].column_names
-    else:
-        logger.info("There is nothing to do. Please pass `do_train`, `do_eval` and/or `do_predict`.")
-        return
-
-    # Temporarily set max_target_length for training.
-    max_target_length = data_args.max_target_length
-    padding = "max_length" if data_args.pad_to_max_length else False
-
     if training_args.label_smoothing_factor > 0 and not hasattr(model, "prepare_decoder_input_ids_from_labels"):
         logger.warning(
             "label_smoothing is enabled but the `prepare_decoder_input_ids_from_labels` method is not defined for"
             f"`{model.__class__.__name__}`. This will lead to loss being calculated twice and will take up more memory"
         )
 
-    def preprocess_tableqa_function(examples, is_training=False, question_lower_cas=False):
-        """
-        The is_training FLAG is used to identify if we could use the supervision
-        to truncate the table content if it is required.
-        """
-
-        questions = [question.lower() if question_lower_cas else question for question in examples["question"]]
-        example_tables = examples["table"]
-        tables = [
-            pd.DataFrame.from_records(example_table["rows"], columns=example_table["header"])
-            for example_table in example_tables
-        ]
-
-        # using wikitablequestion's answer set
-        answers = examples["answers"]
-
-        # IMPORTANT: we cannot pass by answers during evaluation, answers passed during training are used to
-        # truncate large tables in the train set!
-        if is_training:
-            model_inputs = tokenizer(
-                table=tables,
-                query=questions,
-                answer=answers,
-                max_length=data_args.max_source_length,
-                padding=padding,
-                truncation=True,
-            )
-        else:
-            model_inputs = tokenizer(
-                table=tables, query=questions, max_length=data_args.max_source_length, padding=padding, truncation=True
-            )
-
-        labels = tokenizer(
-            answer=[", ".join(answer) for answer in answers],
-            max_length=max_target_length,
-            padding=padding,
-            truncation=True,
-        )
-
-        # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
-        # padding in the loss.
-        if padding == "max_length" and data_args.ignore_pad_token_for_loss:
-            labels["input_ids"] = [
-                [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
-            ]
-
-        model_inputs["labels"] = labels["input_ids"]
-
-        return model_inputs
-
-    # in training, we can use the answer as extra information to truncate large tables
-    preprocess_tableqa_function_training = partial(preprocess_tableqa_function, is_training=True)
+    tableqa_processor = TableQAProcessor(
+        tokenizer=tokenizer,
+        max_source_length=data_args.max_source_length,
+        question_lower_case=False
+    )
+    if data_args.pretraindata_dir:
+        if data_args.max_source_length != 1024:
+            logger.warning('OmniTab is pretrained with max_source_length=1024')
+        pretrain_processor = PretrainProcessor(
+            max_source_length=data_args.max_source_length,  # max length of source
+            max_context_length=128)
 
     if training_args.do_train:
-        if "train" not in datasets:
+        if train_dataset is None:
             raise ValueError("--do_train requires a train dataset")
-        train_dataset = datasets["train"]
-        if data_args.max_train_samples is not None:
-            train_dataset = train_dataset.select(range(data_args.max_train_samples))
-        train_dataset = train_dataset.map(
-            preprocess_tableqa_function_training,
-            batched=True,
-            num_proc=data_args.preprocessing_num_workers,
-            remove_columns=column_names,
-            load_from_cache_file=not data_args.overwrite_cache,
-        )
+        if data_args.pretraindata_dir:  # pretrain
+            assert data_args.max_train_samples is None, NotImplementedError
+            train_dataset = pretrain_processor.process(
+                train_dataset,
+                num_proc=data_args.preprocessing_num_workers,
+                overwrite_cache=data_args.overwrite_cache)
+        else:  # finetune on table-QA datasets
+            if data_args.max_train_samples is not None:
+                train_dataset = train_dataset.select(range(data_args.max_train_samples))
+            train_dataset = tableqa_processor.process(
+                train_dataset,
+                is_training=True,
+                max_target_length=data_args.max_target_length,
+                num_proc=data_args.preprocessing_num_workers,
+                overwrite_cache=data_args.overwrite_cache)
 
     if training_args.do_eval:
-        max_target_length = data_args.val_max_target_length
-        if "validation" not in datasets:
+        if eval_dataset is None:
             raise ValueError("--do_eval requires a validation dataset")
-        eval_dataset = datasets["validation"]
         if data_args.max_eval_samples is not None:
             eval_dataset = eval_dataset.select(range(data_args.max_eval_samples))
-        eval_dataset = eval_dataset.map(
-            preprocess_tableqa_function,
-            batched=True,
+        eval_dataset = tableqa_processor.process(
+            eval_dataset,
+            is_training=False,
+            max_target_length=data_args.val_max_target_length,
             num_proc=data_args.preprocessing_num_workers,
-            remove_columns=column_names,
-            load_from_cache_file=not data_args.overwrite_cache,
-        )
+            overwrite_cache=data_args.overwrite_cache)
 
     if training_args.do_predict:
-        max_target_length = data_args.val_max_target_length
-        if "test" not in datasets:
+        if predict_dataset is None:
             raise ValueError("--do_predict requires a test dataset")
-        predict_dataset = datasets["test"]
         if data_args.max_predict_samples is not None:
             predict_dataset = predict_dataset.select(range(data_args.max_predict_samples))
-        predict_dataset = predict_dataset.map(
-            preprocess_tableqa_function,
-            batched=True,
+        predict_dataset = tableqa_processor.process(
+            predict_dataset,
+            is_training=False,
+            max_target_length=data_args.val_max_target_length,
             num_proc=data_args.preprocessing_num_workers,
-            remove_columns=column_names,
-            load_from_cache_file=not data_args.overwrite_cache,
-        )
+            overwrite_cache=data_args.overwrite_cache)
 
     # Data collator
+    assert not data_args.pad_to_max_length, NotImplementedError
     label_pad_token_id = -100 if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id
-    data_collator = DataCollatorForSeq2Seq(
+    data_collator = DataCollatorWithTargetToBeShifted(
         tokenizer,
         model=model,
         label_pad_token_id=label_pad_token_id,
         pad_to_multiple_of=8 if training_args.fp16 else None,
+        target_field='target_input_ids',
     )
 
     def postprocess_text(preds, labels):
         preds = [pred.strip() for pred in preds]
         labels = [label.strip() for label in labels]
-
         return preds, labels
 
     def compute_metrics(eval_preds):
@@ -613,7 +587,7 @@ def main():
                 predictions = [pred.strip() for pred in predictions]
                 output_prediction_file = os.path.join(training_args.output_dir, "predictions.txt")
                 with open(output_prediction_file, "w") as writer:
-                    writer.write("\n".join(predictions))
+                    writer.write('\n'.join(map(lambda x: x.replace('\n', ' '), predictions)))
 
     return results
 
