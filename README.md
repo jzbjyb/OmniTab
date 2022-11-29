@@ -108,7 +108,7 @@ Modify these headers and the commands to activate the environemnt based on the c
 
 ### Finetuning
 
-#### Full
+#### Full setting
 Finetune pretrained OmniTab models on WikiTableQuestions dataset in the full setting:
 ```shell
 ./train_wikitablequestions.sh neulab/omnitab-large output/omnitab-large-finetuned-wtq
@@ -116,7 +116,7 @@ Finetune pretrained OmniTab models on WikiTableQuestions dataset in the full set
 which finetunes `neulab/omnitab-large` and saves the model to `output/omnitab-large-finetuned-wtq`.
 All hyperparameters are set to reproduce the experiments in the paper, and you should be able to get performance close to 0.633 as listed in the "performance reference" table
 
-#### Few-shot
+#### Few-shot settings
 Finetune pretrained OmniTab models on WikiTableQuestions dataset in few-shot settings:
 ```shell
 ./train_wikitablequestions.sh neulab/omnitab-large-${f}shot output/omnitab-large-${f}shot-finetuned-wtq-${f}shot ${f}
