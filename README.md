@@ -10,14 +10,8 @@ We propose an **omnivorous** pretraining approach that consumes **natural** data
   <img align="middle" src="res/omnitab.png" height="350" alt="OmniTab"/>
 </p>
 
-## Installation
-
-### Conda (recommended)
+## Installation with Conda
 Create a conda env with the name `omnitab` using `./setup.sh`.
-
-### Docker
-Dependencies are specified in `Dockerfile`.
-You can either build your own image using `docker build .`, or use [pre-built image](https://hub.docker.com/repository/docker/jzbjyb/my-repo) by running `docker pull jzbjyb/my-repo`.
 
 ## Quick start using Huggingface Transformers 🤗
 You can directly load the OmniTab model (`neulab/omnitab-large-finetuned-wtq`) from HuggingFace's model hub.
