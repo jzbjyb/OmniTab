@@ -67,19 +67,20 @@ The table below contains the peformance of OmniTab models of various settings on
 | **f=1024** |                   0.349 |                       0.534 |                   0.346 |                       0.526 |
 | **full**   |                   0.411 |                       0.625 |                   0.417 |                       0.633 |
 
-## Pretrained models and data
-Download the best OmniTab model and the WikiTableQuestions dataset from [Google Drive](https://drive.google.com/drive/u/1/folders/14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY). You can download it programmatically with [gdrive](https://anaconda.org/conda-forge/gdrive) using `gdrive download -r 14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY`.
+## Pretraining data and WikiTableQuestions dataset
+Download the pretraining data and the WikiTableQuestions dataset from [Google Drive](https://drive.google.com/drive/u/1/folders/14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY). You can download it programmatically with [gdrive](https://anaconda.org/conda-forge/gdrive) using `gdrive download -r 14IAqJb9ObVDE5oOJouhkqgd_mn11PkYY`.
 It includes:
 ```shell
-|-- omnitab-large # the best OmniTab model (pretrained on natural and synthetic data)
-    |-- model # model checkpoint
-    |-- wtq # predictions on the dev/test split of WikiTableQuestions
-|-- omnitab-large-finetuned-wtq # the best OmniTab model fine-tuned on all examples from WikiTableQuestions
-    |-- model # model checkpoint
-    |-- wtq # predictions on the dev/test split of WikiTableQuestions
+|-- pretrain_data
+    |-- natural.jsonl # natural pretraining data (generated from a subset of the TAPAS pretraining data (https://github.com/google-research/tapas/blob/master/PRETRAIN_DATA.md))
+    |-- synthetic.jsonl # synthetic pretraining data (generated from sql.jsonl)
+    |-- sql.jsonl # SQL pretraining data (a subset of the TAPEX pretraining data (https://github.com/microsoft/Table-Pretraining#pre-training-corpus))
 |-- wtq # the WikiTableQuestions dataset
-    |-- train/dev/test # preprocessed data for fine-tuning and inference
-    |-- tagged_[dev|test].tsv # annotation files for evaluation
+    |-- fewshot_ids # ids of training examples used in few-shot finetuning
+    |-- predictions_validation # predictions of various OmniTab models on the WTQ validation split
+    |-- predictions_test # predictions of various OmniTab models on the WTQ test split
+    |-- tagged # annotation files used in computing metrics
+    |-- validation_ids.txt # ids of validation examples used in computing metrics
 ```
 
 ## Experiment
