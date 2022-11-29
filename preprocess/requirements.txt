@@ -1,3 +1,0 @@
-wikitextparser
-beautifulsoup4
-pyjnius
