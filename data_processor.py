@@ -412,4 +412,8 @@ class DataCollatorWithTargetToBeShifted(DataCollatorForSeq2Seq):
             if 'labels' in features:
                 assert features['decoder_input_ids'].size() == features['labels'].size()
 
+        # convert pad tokens in labels to the to-be-ignored tokens
+        if 'labels' in features:
+            features['labels'][features['labels'] == self.tokenizer.pad_token_id] = self.label_pad_token_id
+
         return features
