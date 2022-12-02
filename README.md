@@ -42,8 +42,8 @@ print(tokenizer.batch_decode(outputs, skip_special_tokens=True))
 - Pretrained models (w/o finetuning)
   - [neulab/omnitab-large](https://huggingface.co/neulab/omnitab-large): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the full setting.
   - [neulab/omnitab-large-16shot](https://huggingface.co/neulab/omnitab-large-16shot): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the 16-shot setting.
-  - [neulab/omnitab-large-16shot](https://huggingface.co/neulab/omnitab-large-128shot): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the 128-shot setting.
-  - [neulab/omnitab-large-16shot](https://huggingface.co/neulab/omnitab-large-1024shot): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the 1024-shot setting.
+  - [neulab/omnitab-large-128shot](https://huggingface.co/neulab/omnitab-large-128shot): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the 128-shot setting.
+  - [neulab/omnitab-large-1024shot](https://huggingface.co/neulab/omnitab-large-1024shot): Pretrained on natural and synthetic data generated with a SQL2NL model trained in the 1024-shot setting.
 - Finetuned models
   - [neulab/omnitab-large-finetuned-wtq](https://huggingface.co/neulab/omnitab-large-finetuned-wtq): `neulab/omnitab-large` finetuned on WTQ in the full setting.
   - [neulab/omnitab-large-16shot-finetuned-wtq-16shot](https://huggingface.co/neulab/omnitab-large-16shot-finetuned-wtq-16shot): `neulab/omnitab-large-16shot` finetuned on WTQ in the 16-shot setting.
